@@ -1,8 +1,8 @@
 package main
 
-// 任务的执行器，对应多个客户端
+// 任务的执行器
 type Executor struct {
-	name    string
-	comment string
-	clients []string
+	name    string  // 执行器名称
+	comment string  // 备注
+	clients []string // 执行器对应的客户端节点列表
 }

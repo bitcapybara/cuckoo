@@ -1,13 +1,20 @@
 package main
 
-import "github.com/bitcapybara/cuckoo/core"
+import (
+	"github.com/bitcapybara/cuckoo/core"
+	"github.com/bitcapybara/raft"
+)
 
 type Server struct {
-
+	node      *raft.Node
+	executors map[string]Executor
 }
 
 func NewServer() *Server {
-	return &Server{}
+	config := raft.Config{
+	}
+	node := raft.NewNode(config)
+	return &Server{node: node}
 }
 
 // 接收来自客户端的心跳注册请求
