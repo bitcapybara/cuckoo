@@ -6,15 +6,22 @@ import (
 )
 
 type Scheduler interface {
-	Next(core.ScheduleRule, time.Time) time.Time
+	Next(time.Time) time.Time
 }
 
-var schedulers = map[core.ScheduleType]Scheduler{
-	core.Cron: newScheduleCron(),
-	core.FixedDelay: newScheduleFixedDelay(),
-	core.FixedRate: newScheduleFixedRate(),
+func GetScheduler(rule core.ScheduleRule) (scheduler Scheduler) {
+	switch rule.ScheduleType {
+	case core.Cron:
+		scheduler = newScheduleCron(rule)
+	case core.FixedDelay:
+		scheduler = newScheduleFixedDelay(rule)
+	case core.FixedRate:
+		scheduler = newScheduleFixedRate(rule)
+	}
+	return
 }
 
-func GetScheduler(scheduleType core.ScheduleType) Scheduler {
-	return schedulers[scheduleType]
+// 调度策略是无状态的，每次调用时生成新对象
+func Schedule(rule core.ScheduleRule, prev time.Time) time.Time {
+	return GetScheduler(rule).Next(prev)
 }

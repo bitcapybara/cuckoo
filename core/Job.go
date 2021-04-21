@@ -1,16 +1,41 @@
 package core
 
 import (
-	"github.com/bitcapybara/cuckoo/core/schedule"
 	"time"
 )
 
+type ScheduleType uint8
+
+const (
+	Cron ScheduleType = iota
+	FixedDelay
+	FixedRate
+)
+
+type RouteType uint8
+
+const (
+	First RouteType = iota
+	Last
+	Round
+	Random
+)
+
+type ScheduleRule struct {
+	ScheduleType ScheduleType
+	CronExpr     string
+	TimeZone     time.Location
+	FixedDelay   int64
+	FixedRate    int64
+	InitialDelay int64
+}
+
 type Job struct {
-	ID       string
-	Comment  string
-	Path     string
-	Schedule schedule.Schedule
-	Enable   bool
-	Next     time.Time
-	Prev     time.Time
+	ID           string
+	Comment      string
+	Path         string
+	ScheduleRule ScheduleRule
+	RouteType    RouteType
+	Timeout      time.Duration
+	router       RouteType
 }

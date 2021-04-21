@@ -8,10 +8,10 @@ import (
 type scheduleFixedDelay struct {
 }
 
-func newScheduleFixedDelay() scheduleFixedDelay {
+func newScheduleFixedDelay(rule core.ScheduleRule) scheduleFixedDelay {
 	return scheduleFixedDelay{}
 }
 
-func (f scheduleFixedDelay) Next(rule core.ScheduleRule, time time.Time) time.Time {
+func (f scheduleFixedDelay) Next(time time.Time) time.Time {
 	panic("implement me")
 }

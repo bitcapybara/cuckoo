@@ -8,7 +8,7 @@ type HeartbeatReq struct {
 }
 
 type SubmitReq struct {
-
+	Job Job
 }
 
 type Status uint8

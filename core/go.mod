@@ -1,3 +1,3 @@
 module github.com/bitcapybara/cuckoo/core
 
-go 1.15
+go 1.16

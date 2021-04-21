@@ -8,10 +8,10 @@ import (
 type scheduleCron struct {
 }
 
-func newScheduleCron() scheduleCron {
+func newScheduleCron(rule core.ScheduleRule) scheduleCron {
 	return scheduleCron{}
 }
 
-func (s scheduleCron) Next(rule core.ScheduleRule, time time.Time) time.Time {
+func (s scheduleCron) Next(time time.Time) time.Time {
 	panic("implement me")
 }
