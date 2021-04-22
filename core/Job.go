@@ -30,8 +30,10 @@ type ScheduleRule struct {
 	InitialDelay int64
 }
 
+type JobId int64
+
 type Job struct {
-	ID           string
+	ID           JobId
 	Comment      string
 	Path         string
 	ScheduleRule ScheduleRule
