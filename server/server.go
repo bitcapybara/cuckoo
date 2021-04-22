@@ -3,14 +3,11 @@ package main
 import (
 	"github.com/bitcapybara/cuckoo/core"
 	"github.com/bitcapybara/raft"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 )
 
 type Server struct {
 	addr string
 	node *raft.Node
-	echo *echo.Echo
 }
 
 func newServer(role raft.RoleStage, me raft.NodeId, peers map[raft.NodeId]raft.NodeAddr) *Server {
@@ -26,22 +23,12 @@ func newServer(role raft.RoleStage, me raft.NodeId, peers map[raft.NodeId]raft.N
 
 	return &Server{
 		node: raft.NewNode(config),
-		echo: echo.New(),
 	}
 }
 
 func (s *Server) Start() {
 	// 开启 raft 循环
 	go s.node.Run()
-
-	e := s.echo
-	// Middleware
-	e.Use(middleware.Recover())
-
-	// 由用户调用
-
-	// Start server
-	e.Logger.Fatal(e.Start(s.addr))
 }
 
 // 接收来自客户端的心跳注册请求
