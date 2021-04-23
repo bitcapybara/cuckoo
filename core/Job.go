@@ -24,7 +24,7 @@ const (
 type ScheduleRule struct {
 	ScheduleType ScheduleType
 	CronExpr     string
-	TimeZone     time.Location
+	TimeZone     *time.Location
 	FixedDelay   int64
 	FixedRate    int64
 	InitialDelay int64
