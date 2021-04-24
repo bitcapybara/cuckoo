@@ -3,7 +3,7 @@ package client
 import "github.com/bitcapybara/cuckoo/core"
 
 type CuckooClient struct {
-	transport Transport        // 网络通信接口，客户端调用此接口发送网络请求
+	transport RpcClient        // 网络通信接口，客户端调用此接口发送网络请求
 	local     core.NodeAddr    // 客户端本地地址
 	remote    *core.RemoteInfo // 服务端所有节点地址
 }

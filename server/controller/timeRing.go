@@ -1,4 +1,4 @@
-package fsm
+package controller
 
 import (
 	"github.com/bitcapybara/cuckoo/core"
