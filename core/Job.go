@@ -25,7 +25,6 @@ type ScheduleRule struct {
 	ScheduleType ScheduleType
 	CronExpr     string
 	ParseOption  ParseOption
-	TimeZone     *time.Location
 	FixedDelay   time.Duration
 	FixedRate    time.Duration
 	InitialDelay time.Duration

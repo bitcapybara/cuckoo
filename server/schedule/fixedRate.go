@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-type scheduleFixedRate struct {
+type FixedRateScheduler struct {
 }
 
-func newScheduleFixedRate(rule core.ScheduleRule) scheduleFixedRate {
-	return scheduleFixedRate{}
+func newScheduleFixedRate(rule core.ScheduleRule) FixedRateScheduler {
+	return FixedRateScheduler{}
 }
 
-func (f scheduleFixedRate) Next(time time.Time) time.Time {
+func (f FixedRateScheduler) Next(time time.Time) time.Time {
 	panic("implement me")
 }

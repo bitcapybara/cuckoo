@@ -130,7 +130,7 @@ func (p CronParser) Parse(spec string) (Scheduler, error) {
 		return nil, err
 	}
 
-	return &ScheduleCron{
+	return &CronScheduler{
 		Second:   second,
 		Minute:   minute,
 		Hour:     hour,
@@ -354,7 +354,7 @@ func all(r bounds) uint64 {
 func parseDescriptor(descriptor string, loc *time.Location) (Scheduler, error) {
 	switch descriptor {
 	case "@yearly", "@annually":
-		return &ScheduleCron{
+		return &CronScheduler{
 			Second:   1 << seconds.min,
 			Minute:   1 << minutes.min,
 			Hour:     1 << hours.min,
@@ -365,7 +365,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Scheduler, error) {
 		}, nil
 
 	case "@monthly":
-		return &ScheduleCron{
+		return &CronScheduler{
 			Second:   1 << seconds.min,
 			Minute:   1 << minutes.min,
 			Hour:     1 << hours.min,
@@ -376,7 +376,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Scheduler, error) {
 		}, nil
 
 	case "@weekly":
-		return &ScheduleCron{
+		return &CronScheduler{
 			Second:   1 << seconds.min,
 			Minute:   1 << minutes.min,
 			Hour:     1 << hours.min,
@@ -387,7 +387,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Scheduler, error) {
 		}, nil
 
 	case "@daily", "@midnight":
-		return &ScheduleCron{
+		return &CronScheduler{
 			Second:   1 << seconds.min,
 			Minute:   1 << minutes.min,
 			Hour:     1 << hours.min,
@@ -398,7 +398,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Scheduler, error) {
 		}, nil
 
 	case "@hourly":
-		return &ScheduleCron{
+		return &CronScheduler{
 			Second:   1 << seconds.min,
 			Minute:   1 << minutes.min,
 			Hour:     all(hours),
