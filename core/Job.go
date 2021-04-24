@@ -33,7 +33,7 @@ type ScheduleRule struct {
 type JobId int64
 
 type Job struct {
-	ID           JobId
+	Id           JobId
 	Comment      string
 	Path         string
 	ScheduleRule ScheduleRule

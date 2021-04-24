@@ -1,4 +1,4 @@
-package components
+package fsm
 
 // 任务的执行器
 type Executor struct {

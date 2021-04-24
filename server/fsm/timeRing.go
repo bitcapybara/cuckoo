@@ -1,4 +1,4 @@
-package components
+package fsm
 
 import (
 	"github.com/bitcapybara/cuckoo/core"
