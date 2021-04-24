@@ -31,7 +31,7 @@ type JobPool interface {
 	Query(timeBefore time.Time, count int) []*entity.JobInfo
 }
 
-// 以数组形式实现的 JobPool
+// SliceJobStorage 是以数组形式实现的 JobPool
 type SliceJobStorage struct {
 	logger   raft.Logger
 	listData *arraylist.List

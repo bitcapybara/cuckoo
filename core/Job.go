@@ -24,10 +24,11 @@ const (
 type ScheduleRule struct {
 	ScheduleType ScheduleType
 	CronExpr     string
+	ParseOption  ParseOption
 	TimeZone     *time.Location
-	FixedDelay   int64
-	FixedRate    int64
-	InitialDelay int64
+	FixedDelay   time.Duration
+	FixedRate    time.Duration
+	InitialDelay time.Duration
 }
 
 type JobId int64
