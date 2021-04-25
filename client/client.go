@@ -19,11 +19,11 @@ func NewCuckooClient() *CuckooClient {
 func (c *CuckooClient) start() {
 	go func() {
 		for {
-			_ = c.transport.Heartbeat(c.remote.LeaderAddr, core.HeartbeatReq{}, &core.RpcReply{})
+			_ = c.transport.Heartbeat(c.remote.LeaderAddr, core.HeartbeatReq{}, &core.CudReply{})
 		}
 	}()
 }
 
 func (c *CuckooClient) Submit(job core.Job) {
-	_ = c.transport.Submit(c.remote.LeaderAddr, core.SubmitReq{}, &core.RpcReply{})
+	_ = c.transport.Submit(c.remote.LeaderAddr, core.AddJobReq{}, &core.CudReply{})
 }

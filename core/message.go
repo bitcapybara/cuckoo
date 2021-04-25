@@ -7,18 +7,33 @@ type HeartbeatReq struct {
 	LocalAddr    NodeAddr
 }
 
-type SubmitReq struct {
-	Job Job
+type AddJobReq struct {
+	Job
+	Enable bool
+}
+
+type UpdateJobReq struct {
+	Job
+}
+
+type DeleteJobReq struct {
+	JobId
+}
+
+type PageQueryReq struct {
+	JobId
+	ExecutorId
+	PageNum  int
+	PageSize int
 }
 
 type Status uint8
 
-const (
-	Ok Status = iota
-	NotLeader
-)
+type CudReply struct {
+	Status   Status
+	Leader   NodeAddr
+}
 
-type RpcReply struct {
-	Status Status
-	Remote RemoteInfo
+type QueryReply struct {
+	Jobs []Job
 }

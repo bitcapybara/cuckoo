@@ -5,6 +5,6 @@ import (
 )
 
 type RpcClient interface {
-	Heartbeat(addr core.NodeAddr, heartbeatReq core.HeartbeatReq, reply *core.RpcReply) error
-	Submit(addr core.NodeAddr, submitReq core.SubmitReq, reply *core.RpcReply) error
+	Heartbeat(addr core.NodeAddr, heartbeatReq core.HeartbeatReq, reply *core.CudReply) error
+	Submit(addr core.NodeAddr, submitReq core.AddJobReq, reply *core.CudReply) error
 }

@@ -32,12 +32,15 @@ type ScheduleRule struct {
 
 type JobId int64
 
+type ExecutorId int64
+
 type Job struct {
 	Id           JobId
+	ExecutorId   ExecutorId
 	Comment      string
 	Path         string
 	ScheduleRule ScheduleRule
 	RouteType    RouteType
 	Timeout      time.Duration
-	router       RouteType
+	Router       RouteType
 }
