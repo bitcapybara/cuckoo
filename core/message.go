@@ -22,7 +22,7 @@ type DeleteJobReq struct {
 
 type PageQueryReq struct {
 	JobId
-	ExecutorId
+	ExecutorName
 	PageNum  int
 	PageSize int
 }

@@ -5,24 +5,18 @@ import (
 	"sync"
 )
 
-type TimeRing struct {
-	ringData map[int][]core.JobId
+type timeRing struct {
+	ringData map[int][]core.Job
 	mu       sync.Mutex
 }
 
-func NewTimeRing() *TimeRing {
-	return &TimeRing{
-		ringData: make(map[int][]core.JobId),
+func NewTimeRing() *timeRing {
+	return &timeRing{
+		ringData: make(map[int][]core.Job),
 	}
 }
 
-func (t *TimeRing) Get(second int) []core.JobId {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.ringData[second]
-}
-
-func (t *TimeRing) GetAndRemove(second int) []core.JobId {
+func (t *timeRing) getAndRemove(second int) []core.Job {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	jobIds := t.ringData[second]
@@ -30,18 +24,18 @@ func (t *TimeRing) GetAndRemove(second int) []core.JobId {
 	return jobIds
 }
 
-func (t *TimeRing) Put(second int, id core.JobId) {
+func (t *timeRing) put(second int, job core.Job) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if ids, ok := t.ringData[second]; !ok {
-		t.ringData[second] = []core.JobId{id}
+		t.ringData[second] = []core.Job{job}
 	} else {
-		ids = append(ids, id)
+		ids = append(ids, job)
 	}
 }
 
-func (t *TimeRing) Replace(second int, jobIds []core.JobId) {
+func (t *timeRing) Replace(second int, jobs []core.Job) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.ringData[second] = jobIds
+	t.ringData[second] = jobs
 }

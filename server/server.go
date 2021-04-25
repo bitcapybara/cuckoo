@@ -22,7 +22,7 @@ func newServer(config raft.Config) *Server {
 }
 
 func (s *Server) Start() {
-	// 开启 raft 循环
+	// 开启主循环
 	go s.controller.Start()
 }
 
