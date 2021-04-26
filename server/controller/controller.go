@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/bitcapybara/cuckoo/core"
 	"github.com/bitcapybara/cuckoo/server/entity"
+	"github.com/bitcapybara/cuckoo/server/router"
+	"github.com/bitcapybara/cuckoo/server/schedule"
 	"github.com/bitcapybara/raft"
 	"github.com/vmihailenco/msgpack/v5"
 	"sync"
@@ -18,21 +20,30 @@ const (
 	ScheduleMaxJob = 5000
 )
 
-type ScheduleController struct {
-	logger    raft.Logger
-	Node      *raft.Node          // raft 节点
-	executors map[string]Executor // 所有执行器，key=ExecutorName
-	timeRing  *timeRing           // 时间轮，存放近期需要执行的任务，master节点使用
-	jobPool   JobPool             // 任务池，存放所有任务
-	mu        sync.Mutex
+// 网络通信接口
+type JobDispatcher interface {
+	// 给客户端发送任务让其执行
+	Dispatch(clientAddr core.NodeAddr, job core.Job) error
 }
 
-func NewScheduleController(node *raft.Node, jobPool JobPool, logger raft.Logger) *ScheduleController {
+type ScheduleController struct {
+	logger     raft.Logger   // 日志
+	Node       *raft.Node    // raft 节点
+	jobGroup   *jobGroup      // 执行器对应的客户端节点列表 // 所有执行器，key=JobGroupName
+	timeRing   *timeRing     // 时间轮，存放近期需要执行的任务，master节点使用
+	jobPool    JobPool       // 任务池，存放所有任务
+	dispatcher JobDispatcher // 任务分发器
+	mu         sync.Mutex
+}
+
+func NewScheduleController(node *raft.Node, jobPool JobPool, logger raft.Logger, dispatcher JobDispatcher) *ScheduleController {
 	return &ScheduleController{
-		logger: logger,
+		logger:   logger,
 		Node:     node,
+		jobGroup: newJobGroup(),
 		timeRing: NewTimeRing(),
-		jobPool: jobPool,
+		jobPool:  jobPool,
+		dispatcher: dispatcher,
 	}
 }
 
@@ -68,10 +79,12 @@ func (s *ScheduleController) runSchedule() {
 			// 开始调度
 			for _, jobInfo := range jobInfos {
 				if now.After(jobInfo.Next) {
-					// todo 错过了调度时间，立即执行一次
+					// 错过了调度时间，立即执行一次
+					s.Trigger(jobInfo.Job)
 				}
 				// 放入时间轮
 				s.timeRing.put(jobInfo.Next.Second(), jobInfo.Job)
+				jobInfo.Next = schedule.Schedule(jobInfo.Job.ScheduleRule, jobInfo.Next)
 			}
 			// 更新任务信息
 			for _, jobInfo := range jobInfos {
@@ -104,9 +117,26 @@ func (s *ScheduleController) runTimeRing() {
 			}
 			if len(ringItemData) > 0 {
 				// 触发任务
+				for _, job := range ringItemData {
+					s.Trigger(job)
+				}
 			}
 		}()
 	}
+}
+
+func (s *ScheduleController) Trigger(job core.Job) {
+	go func() {
+		clientAddr := router.Route(job.Router, s.jobGroup.getClients(job.Group))
+		dispatchErr := s.dispatcher.Dispatch(clientAddr, job)
+		if dispatchErr != nil {
+			s.logger.Error(fmt.Errorf("分发任务出错：%w", dispatchErr).Error())
+		}
+	}()
+}
+
+func (s *ScheduleController) Register(groupName string, addr core.NodeAddr) {
+	s.jobGroup.register(groupName, addr)
 }
 
 // 实现 raft.Fsm 接口

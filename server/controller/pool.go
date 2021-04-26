@@ -142,7 +142,7 @@ func (s *SliceJobPool) Query(timeBefore time.Time, count int) []*entity.JobInfo 
 	defer s.mu.Unlock()
 	list := s.listData.Select(func(index int, value interface{}) bool {
 		info := value.(*entity.JobInfo)
-		return info.Next.Before(timeBefore) && index < count
+		return info.Next.Before(timeBefore) && index < count && info.Enable
 	})
 	result := make([]*entity.JobInfo, list.Size())
 	iterator := list.Iterator()

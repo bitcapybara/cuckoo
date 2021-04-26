@@ -32,12 +32,9 @@ type ScheduleRule struct {
 
 type JobId int64
 
-type ExecutorName int64
-
 type Job struct {
 	Id           JobId
-	ExecutorName ExecutorName
-	Comment      string
+	Group        string
 	Path         string
 	ScheduleRule ScheduleRule
 	RouteType    RouteType

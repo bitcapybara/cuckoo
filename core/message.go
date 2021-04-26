@@ -3,8 +3,8 @@ package core
 type NodeAddr string
 
 type HeartbeatReq struct {
-	ExecutorName string
-	LocalAddr    NodeAddr
+	Group     string
+	LocalAddr NodeAddr
 }
 
 type AddJobReq struct {
@@ -22,16 +22,21 @@ type DeleteJobReq struct {
 
 type PageQueryReq struct {
 	JobId
-	ExecutorName
+	Group    string
 	PageNum  int
 	PageSize int
 }
 
 type Status uint8
 
+const (
+	Ok Status = iota
+	NotLeader
+)
+
 type CudReply struct {
-	Status   Status
-	Leader   NodeAddr
+	Status Status
+	Leader NodeAddr
 }
 
 type QueryReply struct {

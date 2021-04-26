@@ -9,17 +9,29 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
+type Config struct {
+	raftConfig    raft.Config
+	JobPool       controller.JobPool
+	JobDispatcher controller.JobDispatcher
+}
+
 type Server struct {
 	addr       string
 	controller *controller.ScheduleController
 }
 
-func newServer(config raft.Config) *Server {
-	raftNode := raft.NewNode(config)
-	jobPool := controller.NewSliceJobPool(config.Logger)
+func newServer(config Config) *Server {
+	raftConfig := config.raftConfig
+	raftNode := raft.NewNode(raftConfig)
+	var jobPool controller.JobPool
+	if config.JobPool != nil {
+		jobPool = config.JobPool
+	} else {
+		jobPool = controller.NewSliceJobPool(raftConfig.Logger)
+	}
 	return &Server{
-		addr:       string(config.Peers[config.Me]),
-		controller: controller.NewScheduleController(raftNode, jobPool, config.Logger),
+		addr:       string(raftConfig.Peers[raftConfig.Me]),
+		controller: controller.NewScheduleController(raftNode, jobPool, raftConfig.Logger, config.JobDispatcher),
 	}
 }
 
@@ -30,6 +42,12 @@ func (s *Server) Start() {
 
 // 接收来自客户端的心跳注册请求
 func (s *Server) Heartbeat(req core.HeartbeatReq, reply *core.CudReply) error {
+	if !s.controller.Node.IsLeader() {
+		reply.Status = core.NotLeader
+		reply.Leader = core.NodeAddr(s.controller.Node.GetLeader())
+	} else {
+		s.controller.Register(req.Group, req.LocalAddr)
+	}
 	return nil
 }
 
