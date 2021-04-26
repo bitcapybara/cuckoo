@@ -67,7 +67,7 @@ func jobInfoComparator(a, b interface{}) int {
 	return info1.Next.Second() - info2.Next.Second()
 }
 
-func NewSliceJobStorage(logger raft.Logger) *SliceJobPool {
+func NewSliceJobPool(logger raft.Logger) *SliceJobPool {
 	return &SliceJobPool{
 		logger:   logger,
 		listData: arraylist.New(),

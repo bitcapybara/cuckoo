@@ -27,10 +27,12 @@ type ScheduleController struct {
 	mu        sync.Mutex
 }
 
-func NewScheduleController(node *raft.Node) *ScheduleController {
+func NewScheduleController(node *raft.Node, jobPool JobPool, logger raft.Logger) *ScheduleController {
 	return &ScheduleController{
+		logger: logger,
 		Node:     node,
 		timeRing: NewTimeRing(),
+		jobPool: jobPool,
 	}
 }
 

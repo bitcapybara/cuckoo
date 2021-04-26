@@ -15,9 +15,11 @@ type Server struct {
 }
 
 func newServer(config raft.Config) *Server {
+	raftNode := raft.NewNode(config)
+	jobPool := controller.NewSliceJobPool(config.Logger)
 	return &Server{
 		addr:       string(config.Peers[config.Me]),
-		controller: controller.NewScheduleController(raft.NewNode(config)),
+		controller: controller.NewScheduleController(raftNode, jobPool, config.Logger),
 	}
 }
 
