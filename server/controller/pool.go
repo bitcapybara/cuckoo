@@ -12,9 +12,20 @@ import (
 	"time"
 )
 
+// 实现对象的序列化功能
+type Serializable interface {
+
+	Encode() ([]byte, error)
+
+	Decode([]byte) error
+}
+
 // JobPool 是存放所有任务的任务池
 // 每个节点维护一份作为多个备份
 type JobPool interface {
+
+	Serializable
+
 	// Add 添加任务到持久化存储
 	Add(jobInfo *entity.JobInfo) error
 
@@ -31,11 +42,23 @@ type JobPool interface {
 	Query(timeBefore time.Time, count int) []*entity.JobInfo
 }
 
-// SliceJobStorage 是以数组形式实现的 JobPool
-type SliceJobStorage struct {
+// SliceJobPool 是以数组形式实现的 JobPool
+type SliceJobPool struct {
 	logger   raft.Logger
 	listData *arraylist.List
 	mu       sync.Mutex
+}
+
+func (s *SliceJobPool) Encode() ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return msgpack.Marshal(s.listData)
+}
+
+func (s *SliceJobPool) Decode(data []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return msgpack.Unmarshal(data, s.listData)
 }
 
 func jobInfoComparator(a, b interface{}) int {
@@ -44,8 +67,8 @@ func jobInfoComparator(a, b interface{}) int {
 	return info1.Next.Second() - info2.Next.Second()
 }
 
-func NewSliceJobStorage(logger raft.Logger) *SliceJobStorage {
-	return &SliceJobStorage{
+func NewSliceJobStorage(logger raft.Logger) *SliceJobPool {
+	return &SliceJobPool{
 		logger:   logger,
 		listData: arraylist.New(),
 	}
@@ -53,7 +76,7 @@ func NewSliceJobStorage(logger raft.Logger) *SliceJobStorage {
 
 // 实现 JobPool 接口
 
-func (s *SliceJobStorage) Add(jobInfo *entity.JobInfo) error {
+func (s *SliceJobPool) Add(jobInfo *entity.JobInfo) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if jobInfo.Next.IsZero() {
@@ -67,7 +90,7 @@ func (s *SliceJobStorage) Add(jobInfo *entity.JobInfo) error {
 	return nil
 }
 
-func (s *SliceJobStorage) GetById(id core.JobId) *entity.JobInfo {
+func (s *SliceJobPool) GetById(id core.JobId) *entity.JobInfo {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	index, v := s.listData.Find(func(index int, value interface{}) bool {
@@ -80,7 +103,7 @@ func (s *SliceJobStorage) GetById(id core.JobId) *entity.JobInfo {
 	return v.(*entity.JobInfo)
 }
 
-func (s *SliceJobStorage) Update(jobInfo *entity.JobInfo) error {
+func (s *SliceJobPool) Update(jobInfo *entity.JobInfo) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if jobInfo.Next.IsZero() {
@@ -100,7 +123,7 @@ func (s *SliceJobStorage) Update(jobInfo *entity.JobInfo) error {
 	return nil
 }
 
-func (s *SliceJobStorage) DeleteById(jobId core.JobId) error {
+func (s *SliceJobPool) DeleteById(jobId core.JobId) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	index, _ := s.listData.Find(func(index int, value interface{}) bool {
@@ -114,7 +137,7 @@ func (s *SliceJobStorage) DeleteById(jobId core.JobId) error {
 	return nil
 }
 
-func (s *SliceJobStorage) Query(timeBefore time.Time, count int) []*entity.JobInfo {
+func (s *SliceJobPool) Query(timeBefore time.Time, count int) []*entity.JobInfo {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	list := s.listData.Select(func(index int, value interface{}) bool {
@@ -127,56 +150,4 @@ func (s *SliceJobStorage) Query(timeBefore time.Time, count int) []*entity.JobIn
 		result[i] = iterator.Value().(*entity.JobInfo)
 	}
 	return result
-}
-
-// 实现 raft.Fsm 接口
-// 结构体的编码/解码使用 msgPack
-
-func (s *SliceJobStorage) Apply(data []byte) error {
-	var cmd entity.Cmd
-	msErr := msgpack.Unmarshal(data, &cmd)
-	if msErr != nil {
-		err := fmt.Errorf("反序列化状态机命令失败！%w", msErr)
-		s.logger.Error(err.Error())
-		return err
-	}
-	jobInfo := &cmd.JobInfo
-	switch cmd.CmdType {
-	case entity.Add:
-		return s.Add(jobInfo)
-	case entity.Update:
-		return s.Update(jobInfo)
-	case entity.Delete:
-		return s.DeleteById(jobInfo.Job.Id)
-	default:
-		err := errors.New(fmt.Sprintf("不支持的命令：%d", cmd.CmdType))
-		s.logger.Error(err.Error())
-		return err
-	}
-}
-
-func (s *SliceJobStorage) Serialize() ([]byte, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	data, umsErr := msgpack.Marshal(s.listData)
-	if umsErr != nil {
-		err := fmt.Errorf("序列化任务池失败！%w", umsErr)
-		s.logger.Error(err.Error())
-		return nil, err
-	}
-	return data, nil
-}
-
-func (s *SliceJobStorage) Install(data []byte) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	var list arraylist.List
-	msErr := msgpack.Unmarshal(data, &list)
-	if msErr != nil {
-		err := fmt.Errorf("反序列化状态机命令失败！%w", msErr)
-		s.logger.Error(err.Error())
-		return err
-	}
-	s.listData = &list
-	return nil
 }
