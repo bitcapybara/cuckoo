@@ -14,7 +14,6 @@ import (
 
 // 实现对象的序列化功能
 type Serializable interface {
-
 	Encode() ([]byte, error)
 
 	Decode([]byte) error
@@ -23,7 +22,6 @@ type Serializable interface {
 // JobPool 是存放所有任务的任务池
 // 每个节点维护一份作为多个备份
 type JobPool interface {
-
 	Serializable
 
 	// Add 添加任务到持久化存储
@@ -39,7 +37,12 @@ type JobPool interface {
 	DeleteById(id core.JobId) error
 
 	// Query 获取要调度的任务
-	Query(timeBefore time.Time, count int) []*entity.JobInfo
+	Query(option QueryOption) []*entity.JobInfo
+}
+
+type QueryOption struct {
+	timeBefore time.Time
+	count      int
 }
 
 // SliceJobPool 是以数组形式实现的 JobPool
@@ -137,12 +140,12 @@ func (s *SliceJobPool) DeleteById(jobId core.JobId) error {
 	return nil
 }
 
-func (s *SliceJobPool) Query(timeBefore time.Time, count int) []*entity.JobInfo {
+func (s *SliceJobPool) Query(option QueryOption) []*entity.JobInfo {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	list := s.listData.Select(func(index int, value interface{}) bool {
 		info := value.(*entity.JobInfo)
-		return info.Next.Before(timeBefore) && index < count && info.Enable
+		return info.Next.Before(option.timeBefore) && (option.count <= 0 || index < option.count) && info.Enable
 	})
 	result := make([]*entity.JobInfo, list.Size())
 	iterator := list.Iterator()
