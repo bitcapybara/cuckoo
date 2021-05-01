@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 )
 
 type Config struct {
-	raftConfig    raft.Config
+	RaftConfig    raft.Config
 	JobPool       controller.JobPool
 	JobDispatcher controller.JobDispatcher
 }
@@ -20,8 +20,8 @@ type Server struct {
 	controller *controller.ScheduleController
 }
 
-func newServer(config Config) *Server {
-	raftConfig := config.raftConfig
+func NewServer(config Config) *Server {
+	raftConfig := config.RaftConfig
 	raftNode := raft.NewNode(raftConfig)
 	var jobPool controller.JobPool
 	if config.JobPool != nil {
@@ -37,7 +37,7 @@ func newServer(config Config) *Server {
 
 func (s *Server) Start() {
 	// 开启主循环
-	go s.controller.Start()
+	s.controller.Start()
 }
 
 // 接收来自客户端的心跳注册请求

@@ -56,30 +56,28 @@ func (s *ScheduleController) Start() {
 	roleObserver := make(chan raft.RoleStage)
 	s.Node.AddRoleObserver(roleObserver)
 
-	go func() {
-		schedTimer := time.NewTimer(ScheduleInterval)
-		ringTimer := time.NewTimer(time.Second)
-		for {
-			if s.Node.IsLeader() {
-				if !s.initialized {
-					s.init()
-				}
-				select {
-				case <- schedTimer.C:
-					go s.runSchedule(schedTimer)
-				case <-ringTimer.C:
-					go s.runTimeRing(ringTimer)
-				}
-			} else {
-				role := <-roleObserver
-				if role != raft.Leader {
-					s.mu.Lock()
-					s.initialized = false
-					s.mu.Unlock()
-				}
+	schedTimer := time.NewTimer(ScheduleInterval)
+	ringTimer := time.NewTimer(time.Second)
+	for {
+		if s.Node.IsLeader() {
+			if !s.initialized {
+				s.init()
+			}
+			select {
+			case <- schedTimer.C:
+				go s.runSchedule(schedTimer)
+			case <-ringTimer.C:
+				go s.runTimeRing(ringTimer)
+			}
+		} else {
+			role := <-roleObserver
+			if role != raft.Leader {
+				s.mu.Lock()
+				s.initialized = false
+				s.mu.Unlock()
 			}
 		}
-	}()
+	}
 }
 
 func (s *ScheduleController) init() {
