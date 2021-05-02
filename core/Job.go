@@ -9,7 +9,6 @@ type ScheduleType uint8
 const (
 	Cron ScheduleType = iota
 	FixedDelay
-	FixedRate
 )
 
 type RouteType uint8
@@ -25,19 +24,17 @@ type ScheduleRule struct {
 	ScheduleType ScheduleType
 	CronExpr     string
 	ParseOption  ParseOption
-	FixedDelay   time.Duration
-	FixedRate    time.Duration
-	InitialDelay time.Duration
+	Initial      time.Duration
+	Duration     time.Duration
 }
 
-type JobId int64
+type JobId string
 
 type Job struct {
 	Id           JobId
 	Group        string
 	Path         string
 	ScheduleRule ScheduleRule
-	RouteType    RouteType
 	Timeout      time.Duration
 	Router       RouteType
 }

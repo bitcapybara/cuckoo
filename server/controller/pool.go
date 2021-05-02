@@ -19,6 +19,17 @@ type Serializable interface {
 	Decode([]byte) error
 }
 
+type JobPoolFsm struct {
+	logger raft.Logger
+	jobPool JobPool
+}
+
+func NewJobPoolFsm(logger raft.Logger, JobPool JobPool) *JobPoolFsm {
+	return &JobPoolFsm{
+		jobPool: JobPool,
+	}
+}
+
 // JobPool 是存放所有任务的任务池
 // 每个节点维护一份作为多个备份
 type JobPool interface {
@@ -77,7 +88,7 @@ func NewSliceJobPool(logger raft.Logger) *SliceJobPool {
 	}
 }
 
-// 实现 JobPool 接口
+// 实现 JobPool 接口，客户端可根据自己的需求使用不同数据结构实现
 
 func (s *SliceJobPool) Add(jobInfo *entity.JobInfo) error {
 	s.mu.Lock()
@@ -153,4 +164,50 @@ func (s *SliceJobPool) Query(option QueryOption) []*entity.JobInfo {
 		result[i] = iterator.Value().(*entity.JobInfo)
 	}
 	return result
+}
+
+// 实现 raft.Fsm 接口
+// 结构体的编码/解码使用 msgPack
+
+func (s *JobPoolFsm) Apply(data []byte) error {
+	var cmd entity.Cmd
+	msErr := msgpack.Unmarshal(data, &cmd)
+	if msErr != nil {
+		err := fmt.Errorf("反序列化状态机命令失败！%w", msErr)
+		s.logger.Error(err.Error())
+		return err
+	}
+	jobInfo := &cmd.JobInfo
+	switch cmd.CmdType {
+	case entity.Add:
+		return s.jobPool.Add(jobInfo)
+	case entity.Update:
+		return s.jobPool.Update(jobInfo)
+	case entity.Delete:
+		return s.jobPool.DeleteById(jobInfo.Job.Id)
+	default:
+		err := errors.New(fmt.Sprintf("不支持的命令：%d", cmd.CmdType))
+		s.logger.Error(err.Error())
+		return err
+	}
+}
+
+func (s *JobPoolFsm) Serialize() ([]byte, error) {
+	data, umsErr := s.jobPool.Encode()
+	if umsErr != nil {
+		err := fmt.Errorf("序列化任务池失败！%w", umsErr)
+		s.logger.Error(err.Error())
+		return nil, err
+	}
+	return data, nil
+}
+
+func (s *JobPoolFsm) Install(data []byte) error {
+	msErr := s.jobPool.Decode(data)
+	if msErr != nil {
+		err := fmt.Errorf("反序列化状态机命令失败！%w", msErr)
+		s.logger.Error(err.Error())
+		return err
+	}
+	return nil
 }

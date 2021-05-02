@@ -7,6 +7,11 @@ type HeartbeatReq struct {
 	LocalAddr NodeAddr
 }
 
+type HeartbeatReply struct {
+	Status Status
+	Leader NodeAddr
+}
+
 type AddJobReq struct {
 	Job
 	Enable bool

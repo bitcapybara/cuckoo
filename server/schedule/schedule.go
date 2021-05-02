@@ -28,9 +28,7 @@ func GetScheduler(rule core.ScheduleRule) (scheduler Scheduler, err error) {
 			}
 		}
 	case core.FixedDelay:
-		scheduler = newScheduleFixedDelay(rule.InitialDelay, rule.FixedDelay)
-	case core.FixedRate:
-		scheduler = newScheduleFixedRate(rule)
+		scheduler = newScheduleFixedDelay(rule)
 	}
 	return
 }

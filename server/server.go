@@ -7,12 +7,14 @@ import (
 	"github.com/bitcapybara/cuckoo/server/entity"
 	"github.com/bitcapybara/raft"
 	"github.com/vmihailenco/msgpack/v5"
+	"time"
 )
 
 type Config struct {
-	RaftConfig    raft.Config
-	JobPool       controller.JobPool
-	JobDispatcher controller.JobDispatcher
+	RaftConfig     raft.Config
+	JobPool        controller.JobPool
+	JobDispatcher  controller.JobDispatcher
+	ExecutorExpire time.Duration
 }
 
 type Server struct {
@@ -29,9 +31,17 @@ func NewServer(config Config) *Server {
 	} else {
 		jobPool = controller.NewSliceJobPool(raftConfig.Logger)
 	}
+	raftConfig.Fsm = controller.NewJobPoolFsm(raftConfig.Logger, jobPool)
+	cc := controller.Config{
+		Node: raftNode,
+		JobPool: jobPool,
+		Logger: raftConfig.Logger,
+		Dispatcher: config.JobDispatcher,
+		ExecutorExpire: config.ExecutorExpire,
+	}
 	return &Server{
 		addr:       string(raftConfig.Peers[raftConfig.Me]),
-		controller: controller.NewScheduleController(raftNode, jobPool, raftConfig.Logger, config.JobDispatcher),
+		controller: controller.NewScheduleController(cc),
 	}
 }
 

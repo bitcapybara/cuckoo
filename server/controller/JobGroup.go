@@ -2,18 +2,21 @@ package controller
 
 import (
 	"github.com/bitcapybara/cuckoo/core"
-	"github.com/emirpasic/gods/sets/hashset"
 	"sync"
+	"time"
 )
 
 type jobGroup struct {
-	groups map[string]*hashset.Set
+	groups map[string]map[core.NodeAddr]time.Time
 	mu     sync.Mutex
+
+	expire time.Duration
 }
 
-func newJobGroup() *jobGroup {
+func newJobGroup(aliveExpire time.Duration) *jobGroup {
 	return &jobGroup{
-		groups: make(map[string]*hashset.Set),
+		groups: make(map[string]map[core.NodeAddr]time.Time),
+		expire: aliveExpire,
 	}
 }
 
@@ -21,27 +24,33 @@ func (g *jobGroup) register(groupName string, addr core.NodeAddr) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if group, ok := g.groups[groupName]; !ok {
-		g.groups[groupName] = hashset.New(addr)
+		g.groups[groupName] = map[core.NodeAddr]time.Time{addr: time.Now().Add(g.expire)}
 	} else {
-		group.Add(addr)
+		group[addr] = time.Now().Add(g.expire)
 	}
 }
 
 func (g *jobGroup) unRegister(groupName string, addr core.NodeAddr) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if group, ok := g.groups[groupName]; ok {
-		group.Remove(addr)
+	if group, gOk := g.groups[groupName]; gOk {
+		if _, aOk := group[addr]; aOk {
+			delete(group, addr)
+		}
 	}
 }
 
 func (g *jobGroup) getClients(groupName string) []core.NodeAddr {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	values := g.groups[groupName].Values()
-	result := make([]core.NodeAddr, len(values))
-	for i, value := range values {
-		result[i] = value.(core.NodeAddr)
+	now := time.Now()
+	values := g.groups[groupName]
+	result := make([]core.NodeAddr, 0)
+	for addr, ex := range values {
+		if ex.Before(now) {
+			continue
+		}
+		result = append(result, addr)
 	}
 	return result
 }

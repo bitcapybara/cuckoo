@@ -1,14 +1,11 @@
 package controller
 
 import (
-	"errors"
 	"fmt"
 	"github.com/bitcapybara/cuckoo/core"
-	"github.com/bitcapybara/cuckoo/server/entity"
 	"github.com/bitcapybara/cuckoo/server/router"
 	"github.com/bitcapybara/cuckoo/server/schedule"
 	"github.com/bitcapybara/raft"
-	"github.com/vmihailenco/msgpack/v5"
 	"sync"
 	"time"
 )
@@ -23,7 +20,15 @@ const (
 // 网络通信接口
 type JobDispatcher interface {
 	// 给客户端发送任务让其执行
-	Dispatch(clientAddr core.NodeAddr, job core.Job) error
+	Dispatch(clientAddr core.NodeAddr, jobId core.JobId) error
+}
+
+type Config struct {
+	Node           *raft.Node
+	JobPool        JobPool
+	Logger         raft.Logger
+	Dispatcher     JobDispatcher
+	ExecutorExpire time.Duration
 }
 
 type ScheduleController struct {
@@ -37,14 +42,14 @@ type ScheduleController struct {
 	mu          sync.Mutex
 }
 
-func NewScheduleController(node *raft.Node, jobPool JobPool, logger raft.Logger, dispatcher JobDispatcher) *ScheduleController {
+func NewScheduleController(config Config) *ScheduleController {
 	return &ScheduleController{
-		logger:     logger,
-		Node:       node,
-		jobGroup:   newJobGroup(),
+		logger:     config.Logger,
+		Node:       config.Node,
+		jobGroup:   newJobGroup(config.ExecutorExpire),
 		timeRing:   NewTimeRing(),
-		jobPool:    jobPool,
-		dispatcher: dispatcher,
+		jobPool:    config.JobPool,
+		dispatcher: config.Dispatcher,
 	}
 }
 
@@ -64,7 +69,7 @@ func (s *ScheduleController) Start() {
 				s.init()
 			}
 			select {
-			case <- schedTimer.C:
+			case <-schedTimer.C:
 				go s.runSchedule(schedTimer)
 			case <-ringTimer.C:
 				go s.runTimeRing(ringTimer)
@@ -162,7 +167,7 @@ func (s *ScheduleController) runTimeRing(timer *time.Timer) {
 func (s *ScheduleController) Trigger(job core.Job) {
 	go func() {
 		clientAddr := router.Route(job.Router, s.jobGroup.getClients(job.Group))
-		dispatchErr := s.dispatcher.Dispatch(clientAddr, job)
+		dispatchErr := s.dispatcher.Dispatch(clientAddr, job.Id)
 		if dispatchErr != nil {
 			s.logger.Error(fmt.Errorf("分发任务出错：%w", dispatchErr).Error())
 		}
@@ -171,50 +176,4 @@ func (s *ScheduleController) Trigger(job core.Job) {
 
 func (s *ScheduleController) Register(groupName string, addr core.NodeAddr) {
 	s.jobGroup.register(groupName, addr)
-}
-
-// 实现 raft.Fsm 接口
-// 结构体的编码/解码使用 msgPack
-
-func (s *ScheduleController) Apply(data []byte) error {
-	var cmd entity.Cmd
-	msErr := msgpack.Unmarshal(data, &cmd)
-	if msErr != nil {
-		err := fmt.Errorf("反序列化状态机命令失败！%w", msErr)
-		s.logger.Error(err.Error())
-		return err
-	}
-	jobInfo := &cmd.JobInfo
-	switch cmd.CmdType {
-	case entity.Add:
-		return s.jobPool.Add(jobInfo)
-	case entity.Update:
-		return s.jobPool.Update(jobInfo)
-	case entity.Delete:
-		return s.jobPool.DeleteById(jobInfo.Job.Id)
-	default:
-		err := errors.New(fmt.Sprintf("不支持的命令：%d", cmd.CmdType))
-		s.logger.Error(err.Error())
-		return err
-	}
-}
-
-func (s *ScheduleController) Serialize() ([]byte, error) {
-	data, umsErr := s.jobPool.Encode()
-	if umsErr != nil {
-		err := fmt.Errorf("序列化任务池失败！%w", umsErr)
-		s.logger.Error(err.Error())
-		return nil, err
-	}
-	return data, nil
-}
-
-func (s *ScheduleController) Install(data []byte) error {
-	msErr := s.jobPool.Decode(data)
-	if msErr != nil {
-		err := fmt.Errorf("反序列化状态机命令失败！%w", msErr)
-		s.logger.Error(err.Error())
-		return err
-	}
-	return nil
 }
