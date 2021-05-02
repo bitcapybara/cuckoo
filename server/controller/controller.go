@@ -128,12 +128,10 @@ func (s *ScheduleController) runSchedule(schedTimer *time.Timer) {
 	s.logger.Info(fmt.Sprintf("查询到的任务: %+v", jobInfos))
 	// 开始调度
 	for _, jobInfo := range jobInfos {
-		if now.After(jobInfo.Next) {
-			// 错过了调度时间，立即执行一次
-			s.Trigger(jobInfo.Job)
+		if now.Before(jobInfo.Next) {
+			// 放入时间轮
+			s.timeRing.put(jobInfo.Next.Second(), jobInfo.Job)
 		}
-		// 放入时间轮
-		s.timeRing.put(jobInfo.Next.Second(), jobInfo.Job)
 		jobInfo.Next = schedule.Schedule(jobInfo.Job.ScheduleRule, jobInfo.Next)
 	}
 	// 更新任务信息
