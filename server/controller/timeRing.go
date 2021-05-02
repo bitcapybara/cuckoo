@@ -30,6 +30,6 @@ func (t *timeRing) put(second int, job core.Job) {
 	if jobs, ok := t.ringData[second]; !ok {
 		t.ringData[second] = []core.Job{job}
 	} else {
-		jobs = append(jobs, job)
+		t.ringData[second] = append(jobs, job)
 	}
 }

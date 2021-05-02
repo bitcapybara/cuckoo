@@ -77,7 +77,7 @@ func (s *ScheduleController) Start() {
 			}
 		} else {
 			role := <-roleObserver
-			s.logger.Trace(fmt.Sprintf("节点角色变更为：%s", raft.RoleToString(role)))
+			s.logger.Info(fmt.Sprintf("节点角色变更为：%s", raft.RoleToString(role)))
 			if role != raft.Leader {
 				s.mu.Lock()
 				s.initialized = false
@@ -90,7 +90,7 @@ func (s *ScheduleController) Start() {
 func (s *ScheduleController) init() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.logger.Trace("初始化任务池")
+	s.logger.Info("初始化任务池")
 	now := time.Now()
 	option := QueryOption{
 		timeBefore: now,
@@ -125,6 +125,7 @@ func (s *ScheduleController) runSchedule(schedTimer *time.Timer) {
 	if len(jobInfos) <= 0 {
 		return
 	}
+	s.logger.Info(fmt.Sprintf("查询到的任务: %+v", jobInfos))
 	// 开始调度
 	for _, jobInfo := range jobInfos {
 		if now.After(jobInfo.Next) {
@@ -132,10 +133,8 @@ func (s *ScheduleController) runSchedule(schedTimer *time.Timer) {
 			s.Trigger(jobInfo.Job)
 		}
 		// 放入时间轮
-		s.logger.Info(fmt.Sprintf("放入时间轮 %+v", jobInfo))
 		s.timeRing.put(jobInfo.Next.Second(), jobInfo.Job)
 		jobInfo.Next = schedule.Schedule(jobInfo.Job.ScheduleRule, jobInfo.Next)
-		s.logger.Info(fmt.Sprintf("下一次执行 %+v", jobInfo))
 	}
 	// 更新任务信息
 	for _, jobInfo := range jobInfos {
@@ -155,11 +154,12 @@ func (s *ScheduleController) runTimeRing(ringTimer *time.Timer) {
 	// 取出时间轮上最近两秒的所有任务
 	var ringItemData []core.Job
 	for i := 0; i < 2; i++ {
-		jobs := s.timeRing.getAndRemove((now.Second() + i) % 60)
+		jobs := s.timeRing.getAndRemove((now.Second() + 60 - i) % 60)
 		if len(jobs) > 0 {
 			ringItemData = append(ringItemData, jobs...)
 		}
 	}
+	s.logger.Info(fmt.Sprintf("时间轮的任务：%+v", ringItemData))
 	if len(ringItemData) > 0 {
 		// 触发任务
 		for _, job := range ringItemData {
