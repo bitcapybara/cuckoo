@@ -24,7 +24,7 @@ type Server struct {
 
 func NewServer(config Config) *Server {
 	raftConfig := config.RaftConfig
-	raftNode := raft.NewNode(raftConfig)
+
 	var jobPool controller.JobPool
 	if config.JobPool != nil {
 		jobPool = config.JobPool
@@ -32,6 +32,7 @@ func NewServer(config Config) *Server {
 		jobPool = controller.NewSliceJobPool(raftConfig.Logger)
 	}
 	raftConfig.Fsm = controller.NewJobPoolFsm(raftConfig.Logger, jobPool)
+	raftNode := raft.NewNode(raftConfig)
 	cc := controller.Config{
 		Node: raftNode,
 		JobPool: jobPool,
@@ -51,11 +52,12 @@ func (s *Server) Start() {
 }
 
 // 接收来自客户端的心跳注册请求
-func (s *Server) Heartbeat(req core.HeartbeatReq, reply *core.CudReply) error {
+func (s *Server) Heartbeat(req core.HeartbeatReq, reply *core.HeartbeatReply) error {
 	if !s.controller.Node.IsLeader() {
 		reply.Status = core.NotLeader
 		reply.Leader = core.NodeAddr(s.controller.Node.GetLeader())
 	} else {
+		reply.Status = core.Ok
 		s.controller.Register(req.Group, req.LocalAddr)
 	}
 	return nil
@@ -65,10 +67,7 @@ func (s *Server) Heartbeat(req core.HeartbeatReq, reply *core.CudReply) error {
 func (s *Server) AddJob(req core.AddJobReq, reply *core.CudReply) error {
 	cmd := entity.Cmd{
 		CmdType: entity.Add,
-		JobInfo: entity.JobInfo{
-			Job:    req.Job,
-			Enable: req.Enable,
-		},
+		Job: req.Job,
 	}
 	return s.sendApplyCommand(cmd, reply)
 }
@@ -77,9 +76,7 @@ func (s *Server) AddJob(req core.AddJobReq, reply *core.CudReply) error {
 func (s *Server) UpdateJob(req core.UpdateJobReq, reply *core.CudReply) error {
 	cmd := entity.Cmd{
 		CmdType: entity.Update,
-		JobInfo: entity.JobInfo{
-			Job: req.Job,
-		},
+		Job: req.Job,
 	}
 	return s.sendApplyCommand(cmd, reply)
 }
@@ -88,9 +85,7 @@ func (s *Server) UpdateJob(req core.UpdateJobReq, reply *core.CudReply) error {
 func (s *Server) DeleteJob(req core.DeleteJobReq, reply *core.CudReply) error {
 	cmd := entity.Cmd{
 		CmdType: entity.Delete,
-		JobInfo: entity.JobInfo{
-			Job: core.Job{Id: req.JobId},
-		},
+		Job: core.Job{Id: req.JobId},
 	}
 	return s.sendApplyCommand(cmd, reply)
 }

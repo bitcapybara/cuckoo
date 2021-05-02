@@ -7,7 +7,6 @@ import (
 
 type JobInfo struct {
 	Job    core.Job
-	Enable bool
 	Next   time.Time
 	Prev   time.Time
 }
@@ -23,5 +22,5 @@ const (
 
 type Cmd struct {
 	CmdType CmdType
-	JobInfo JobInfo
+	Job core.Job
 }

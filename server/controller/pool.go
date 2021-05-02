@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/bitcapybara/cuckoo/core"
 	"github.com/bitcapybara/cuckoo/server/entity"
+	"github.com/bitcapybara/cuckoo/server/schedule"
 	"github.com/bitcapybara/raft"
 	"github.com/emirpasic/gods/lists/arraylist"
 	"github.com/vmihailenco/msgpack/v5"
@@ -26,6 +27,7 @@ type JobPoolFsm struct {
 
 func NewJobPoolFsm(logger raft.Logger, JobPool JobPool) *JobPoolFsm {
 	return &JobPoolFsm{
+		logger: logger,
 		jobPool: JobPool,
 	}
 }
@@ -94,19 +96,19 @@ func (s *SliceJobPool) Add(jobInfo *entity.JobInfo) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if jobInfo.Next.IsZero() {
-		return errors.New("未指定任务的下次执行时间")
+		nextTime := schedule.Schedule(jobInfo.Job.ScheduleRule, time.Now())
+		jobInfo.Next = nextTime
 	}
 	if info := s.GetById(jobInfo.Job.Id); info != nil {
 		return errors.New("当前任务已存在")
 	}
 	s.listData.Add(jobInfo)
 	s.listData.Sort(jobInfoComparator)
+	s.logger.Trace("任务添加到 jobPool")
 	return nil
 }
 
 func (s *SliceJobPool) GetById(id core.JobId) *entity.JobInfo {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	index, v := s.listData.Find(func(index int, value interface{}) bool {
 		info := value.(*entity.JobInfo)
 		return info.Job.Id == id
@@ -121,7 +123,8 @@ func (s *SliceJobPool) Update(jobInfo *entity.JobInfo) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if jobInfo.Next.IsZero() {
-		return errors.New("未指定任务的下次执行时间")
+		nextTime := schedule.Schedule(jobInfo.Job.ScheduleRule, time.Now())
+		jobInfo.Next = nextTime
 	}
 	jobId := jobInfo.Job.Id
 	index, _ := s.listData.Find(func(index int, value interface{}) bool {
@@ -131,7 +134,7 @@ func (s *SliceJobPool) Update(jobInfo *entity.JobInfo) error {
 	if index != -1 {
 		s.listData.Set(index, jobInfo)
 	} else {
-		return errors.New(fmt.Sprintf("没有找到 id=%d 的任务", jobId))
+		return errors.New(fmt.Sprintf("没有找到 id=%s 的任务", jobId))
 	}
 	s.listData.Sort(jobInfoComparator)
 	return nil
@@ -156,7 +159,7 @@ func (s *SliceJobPool) Query(option QueryOption) []*entity.JobInfo {
 	defer s.mu.Unlock()
 	list := s.listData.Select(func(index int, value interface{}) bool {
 		info := value.(*entity.JobInfo)
-		return info.Next.Before(option.timeBefore) && (option.count <= 0 || index < option.count) && info.Enable
+		return info.Next.Before(option.timeBefore) && (option.count <= 0 || index < option.count) && info.Job.Enable
 	})
 	result := make([]*entity.JobInfo, list.Size())
 	iterator := list.Iterator()
@@ -177,13 +180,18 @@ func (s *JobPoolFsm) Apply(data []byte) error {
 		s.logger.Error(err.Error())
 		return err
 	}
-	jobInfo := &cmd.JobInfo
+	jobInfo := &entity.JobInfo{
+		Job: cmd.Job,
+	}
 	switch cmd.CmdType {
 	case entity.Add:
+		s.logger.Trace(fmt.Sprintf("添加任务，id=%s", jobInfo.Job.Id))
 		return s.jobPool.Add(jobInfo)
 	case entity.Update:
+		s.logger.Trace(fmt.Sprintf("更新任务，id=%s", jobInfo.Job.Id))
 		return s.jobPool.Update(jobInfo)
 	case entity.Delete:
+		s.logger.Trace(fmt.Sprintf("删除任务，id=%s", jobInfo.Job.Id))
 		return s.jobPool.DeleteById(jobInfo.Job.Id)
 	default:
 		err := errors.New(fmt.Sprintf("不支持的命令：%d", cmd.CmdType))

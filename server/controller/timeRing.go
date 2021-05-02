@@ -19,23 +19,17 @@ func NewTimeRing() *timeRing {
 func (t *timeRing) getAndRemove(second int) []core.Job {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	jobIds := t.ringData[second]
+	jobs := t.ringData[second]
 	delete(t.ringData, second)
-	return jobIds
+	return jobs
 }
 
 func (t *timeRing) put(second int, job core.Job) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if ids, ok := t.ringData[second]; !ok {
+	if jobs, ok := t.ringData[second]; !ok {
 		t.ringData[second] = []core.Job{job}
 	} else {
-		ids = append(ids, job)
+		jobs = append(jobs, job)
 	}
-}
-
-func (t *timeRing) Replace(second int, jobs []core.Job) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.ringData[second] = jobs
 }

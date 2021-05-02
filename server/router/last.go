@@ -9,6 +9,6 @@ func newRouteLast() routeLast {
 	return routeLast{}
 }
 
-func (r routeLast) route(clients []core.NodeAddr) core.NodeAddr {
-	panic("implement me")
+func (r routeLast) route(groupName string, clients []core.NodeAddr) core.NodeAddr {
+	return clients[len(clients)-1]
 }

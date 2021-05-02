@@ -14,7 +14,6 @@ type HeartbeatReply struct {
 
 type AddJobReq struct {
 	Job
-	Enable bool
 }
 
 type UpdateJobReq struct {
@@ -35,8 +34,8 @@ type PageQueryReq struct {
 type Status uint8
 
 const (
-	Ok Status = iota
-	NotLeader
+	NotLeader Status = iota
+	Ok
 )
 
 type CudReply struct {

@@ -416,7 +416,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Scheduler, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse duration %s: %s", descriptor, err)
 		}
-		return newScheduleFixedDelay(0, duration), nil
+		return newScheduleFixedDelay(core.ScheduleRule{Initial: 0, Duration: duration}), nil
 	}
 
 	return nil, fmt.Errorf("unrecognized descriptor: %s", descriptor)

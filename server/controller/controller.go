@@ -68,6 +68,7 @@ func (s *ScheduleController) Start() {
 			if !s.initialized {
 				s.init()
 			}
+
 			select {
 			case <-schedTimer.C:
 				go s.runSchedule(schedTimer)
@@ -76,6 +77,7 @@ func (s *ScheduleController) Start() {
 			}
 		} else {
 			role := <-roleObserver
+			s.logger.Trace(fmt.Sprintf("节点角色变更为：%s", raft.RoleToString(role)))
 			if role != raft.Leader {
 				s.mu.Lock()
 				s.initialized = false
@@ -88,6 +90,7 @@ func (s *ScheduleController) Start() {
 func (s *ScheduleController) init() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.logger.Trace("初始化任务池")
 	now := time.Now()
 	option := QueryOption{
 		timeBefore: now,
@@ -104,14 +107,14 @@ func (s *ScheduleController) init() {
 	s.initialized = true
 }
 
-func (s *ScheduleController) runSchedule(timer *time.Timer) {
+func (s *ScheduleController) runSchedule(schedTimer *time.Timer) {
 	// 配置定时器
 	now := time.Now()
 	defer func() {
 		end := time.Now()
-		num := end.Sub(now).Milliseconds()%5000 + 1
-		deviation := now.Add(ScheduleInterval * time.Duration(num)).Sub(end)
-		timer.Reset(deviation)
+		num := end.Sub(now).Milliseconds()%800 + 1
+		deviation := now.Add(time.Second * time.Duration(num)).Sub(end)
+		schedTimer.Reset(deviation)
 	}()
 	// 从任务池中获取未来 ScheduleInterval 时间内的 ScheduleMaxJob 个调度任务
 	option := QueryOption{
@@ -129,8 +132,10 @@ func (s *ScheduleController) runSchedule(timer *time.Timer) {
 			s.Trigger(jobInfo.Job)
 		}
 		// 放入时间轮
+		s.logger.Info(fmt.Sprintf("放入时间轮 %+v", jobInfo))
 		s.timeRing.put(jobInfo.Next.Second(), jobInfo.Job)
 		jobInfo.Next = schedule.Schedule(jobInfo.Job.ScheduleRule, jobInfo.Next)
+		s.logger.Info(fmt.Sprintf("下一次执行 %+v", jobInfo))
 	}
 	// 更新任务信息
 	for _, jobInfo := range jobInfos {
@@ -138,20 +143,19 @@ func (s *ScheduleController) runSchedule(timer *time.Timer) {
 	}
 }
 
-func (s *ScheduleController) runTimeRing(timer *time.Timer) {
-	<-timer.C
+func (s *ScheduleController) runTimeRing(ringTimer *time.Timer) {
 	// 配置定时器
 	now := time.Now()
 	defer func() {
 		end := time.Now()
-		num := end.Sub(now).Milliseconds()%5000 + 1
-		deviation := now.Add(ScheduleInterval * time.Duration(num)).Sub(end)
-		timer.Reset(deviation)
+		num := end.Sub(now).Milliseconds()%1000 + 1
+		deviation := now.Add(time.Second * time.Duration(num)).Sub(end)
+		ringTimer.Reset(deviation)
 	}()
 	// 取出时间轮上最近两秒的所有任务
 	var ringItemData []core.Job
 	for i := 0; i < 2; i++ {
-		jobs := s.timeRing.getAndRemove((now.Second() + 60 - i) % 60)
+		jobs := s.timeRing.getAndRemove((now.Second() + i) % 60)
 		if len(jobs) > 0 {
 			ringItemData = append(ringItemData, jobs...)
 		}
@@ -166,7 +170,13 @@ func (s *ScheduleController) runTimeRing(timer *time.Timer) {
 
 func (s *ScheduleController) Trigger(job core.Job) {
 	go func() {
-		clientAddr := router.Route(job.Router, s.jobGroup.getClients(job.Group))
+		clients := s.jobGroup.getClients(job.Group)
+		if len(clients) <= 0 {
+			s.logger.Error("当前任务组没有注册的执行节点")
+			return
+		}
+		clientAddr := router.Route(job.Router, job.Group, clients)
+		s.logger.Trace(fmt.Sprintf("触发任务：id=%s", job.Id))
 		dispatchErr := s.dispatcher.Dispatch(clientAddr, job.Id)
 		if dispatchErr != nil {
 			s.logger.Error(fmt.Errorf("分发任务出错：%w", dispatchErr).Error())

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"github.com/bitcapybara/cuckoo/core"
+	"log"
 	"sync"
 	"time"
 )
@@ -23,6 +24,7 @@ func newJobGroup(aliveExpire time.Duration) *jobGroup {
 func (g *jobGroup) register(groupName string, addr core.NodeAddr) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	log.Println("节点注册，group="+groupName+","+"addr="+string(addr))
 	if group, ok := g.groups[groupName]; !ok {
 		g.groups[groupName] = map[core.NodeAddr]time.Time{addr: time.Now().Add(g.expire)}
 	} else {
@@ -48,6 +50,7 @@ func (g *jobGroup) getClients(groupName string) []core.NodeAddr {
 	result := make([]core.NodeAddr, 0)
 	for addr, ex := range values {
 		if ex.Before(now) {
+			delete(values, addr)
 			continue
 		}
 		result = append(result, addr)

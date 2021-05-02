@@ -9,8 +9,8 @@ func newRouteFirst() routeFirst {
 	return routeFirst{}
 }
 
-func (r routeFirst) route(clients []core.NodeAddr) core.NodeAddr {
-	panic("implement me")
+func (r routeFirst) route(groupName string, clients []core.NodeAddr) core.NodeAddr {
+	return clients[0]
 }
 
 

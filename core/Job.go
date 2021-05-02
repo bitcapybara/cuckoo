@@ -37,4 +37,5 @@ type Job struct {
 	ScheduleRule ScheduleRule
 	Timeout      time.Duration
 	Router       RouteType
+	Enable       bool
 }
