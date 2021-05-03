@@ -112,3 +112,27 @@ func (s *Server) sendApplyCommand(cmd entity.Cmd, reply *core.CudReply) error {
 	reply.Leader = core.NodeAddr(res.Leader.Addr)
 	return nil
 }
+
+func (s *Server) AppendEntries(args raft.AppendEntry, res *raft.AppendEntryReply) error {
+	return s.controller.Node.AppendEntries(args, res)
+}
+
+func (s *Server) RequestVote(args raft.RequestVote, res *raft.RequestVoteReply) error {
+	return s.controller.Node.RequestVote(args, res)
+}
+
+func (s *Server) InstallSnapshot(args raft.InstallSnapshot, res *raft.InstallSnapshotReply) error {
+	return s.controller.Node.InstallSnapshot(args, res)
+}
+
+func (s *Server) ChangeConfig(args raft.ChangeConfig, res *raft.ChangeConfigReply) error {
+	return s.controller.Node.ChangeConfig(args, res)
+}
+
+func (s *Server) TransferLeadership(args raft.TransferLeadership, res *raft.TransferLeadershipReply) error {
+	return s.controller.Node.TransferLeadership(args, res)
+}
+
+func (s *Server) AddLearner(args raft.AddLearner, res *raft.AddLearnerReply) error {
+	return s.controller.Node.AddLearner(args, res)
+}

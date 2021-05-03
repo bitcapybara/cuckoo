@@ -112,7 +112,7 @@ func (s *ScheduleController) runSchedule(schedTimer *time.Timer) {
 	now := time.Now()
 	defer func() {
 		end := time.Now()
-		num := end.Sub(now).Milliseconds()%800 + 1
+		num := end.Sub(now).Milliseconds()%1000 + 1
 		deviation := now.Add(time.Second * time.Duration(num)).Sub(end)
 		schedTimer.Reset(deviation)
 	}()

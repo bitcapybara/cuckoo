@@ -1,6 +1,7 @@
 package schedule
 
 import (
+	"errors"
 	"github.com/bitcapybara/cuckoo/core"
 	"time"
 )
@@ -27,8 +28,10 @@ func GetScheduler(rule core.ScheduleRule) (scheduler Scheduler, err error) {
 				scheduler = s
 			}
 		}
-	case core.FixedDelay:
-		scheduler = newScheduleFixedDelay(rule)
+	case core.FixedRate:
+		scheduler = newScheduleFixedRate(rule)
+	default:
+		return nil, errors.New("不支持的调度类型")
 	}
 	return
 }

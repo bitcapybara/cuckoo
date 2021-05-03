@@ -8,7 +8,7 @@ type ScheduleType uint8
 
 const (
 	Cron ScheduleType = iota
-	FixedDelay
+	FixedRate
 )
 
 type RouteType uint8

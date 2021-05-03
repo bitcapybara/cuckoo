@@ -10,6 +10,7 @@ type Router interface {
 var routers = map[core.RouteType]Router{
 	core.First:  newRouteFirst(),
 	core.Last:   newRouteLast(),
+	core.Round:  newRouteRound(),
 	core.Random: newRouteRandom(),
 }
 
